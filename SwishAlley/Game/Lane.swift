@@ -38,12 +38,12 @@ enum LaneEvent: Equatable {
 struct Lane {
     static let ballCount = 5
     static let substep: Float = 1.0 / 240
-    static let floorRestitution: Float = 0.62
+    static let floorRestitution: Float = 0.55
     static let rimRestitution: Float = 0.5
     static let boardRestitution: Float = 0.68
     static let glassRestitution: Float = 0.45
     /// The floor slopes gently back to the shooter, like an arcade lane's return ramp.
-    static let rampAcceleration: Float = 1.7
+    static let rampAcceleration: Float = 2.4
     static let shotTimeout = 3.0
 
     /// Geometry of the lane; updated live while the hinge moves (balls keep flying).
@@ -172,8 +172,9 @@ struct Lane {
         let prev = b.p
         b.v.y -= Arena.gravity * h
         let onFloor = b.p.y <= r + 0.002
-        if b.state == .returning && onFloor {
-            b.v.z += Self.rampAcceleration * h
+        if b.state == .returning {
+            // The lane tilts back toward the shooter (felt in the air too, so bouncing balls drift home).
+            b.v.z += Self.rampAcceleration * (onFloor ? 1 : 0.5) * h
             b.v.x += (-b.p.x * 3.2 - b.v.x * 0.8) * h     // the lane funnels back to the middle
         }
         if time < b.inNetUntil {
@@ -190,7 +191,7 @@ struct Lane {
             b.p.y = r
             if b.v.y < 0 {
                 let impact = -b.v.y
-                b.v.y = impact > 0.08 ? impact * Self.floorRestitution : 0
+                b.v.y = impact > 0.3 ? impact * Self.floorRestitution : 0
                 b.v.x *= 0.96; b.v.z *= 0.96
                 b.spin *= 0.8
                 if impact > 0.12 && time - b.lastBounce > 0.06 {
