@@ -91,7 +91,7 @@ def page(app):
 
 
 import os
-APP_ID = os.environ.get('APP_ID', 'APPID')
+APP_ID = os.environ.get('APP_ID', '6838196096')
 
 app = dict(
     id=APP_ID, name='Swish Alley', category='GameApplication',
