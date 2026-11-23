@@ -101,7 +101,8 @@ final class GameTests: XCTestCase {
         }
         let states = lane.balls.map { "\($0.state) \($0.p)" }.joined(separator: "; ")
         XCTAssertGreaterThan(shots, 6, states)
-        XCTAssertGreaterThan(scores, shots / 2, states)
+        // Balls in the air collide with each other (as in a real arcade lane), so a stream of shots scores less.
+        XCTAssertGreaterThan(scores, shots / 4, states)
     }
 
     func testMovingHoopStillScores() {
