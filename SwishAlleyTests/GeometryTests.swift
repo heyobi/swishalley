@@ -27,14 +27,14 @@ final class GeometryTests: XCTestCase {
             XCTAssertEqual(l.presentation, .stage)
             let up = l.viewports[0].surface, low = l.viewports[1].surface
             // The upper half rises from the fold; the lower half runs from the fold toward the viewer.
-            let between = acos(simd_dot(up.vu, -low.vu)) * 180 / .pi
+            let between = acos(max(-1, min(1, simd_dot(up.vu, -low.vu)))) * 180 / .pi
             XCTAssertEqual(Double(between), a, accuracy: 0.01, "angle between the halves at \(a)°")
             XCTAssertEqual(l.hinge, Float(a), accuracy: 1e-4)
             // The floor half lies flat (normal straight up) whatever the hinge does.
             XCTAssertEqual(low.normal.y, 1, accuracy: 1e-5)
             // The upright half's normal is perpendicular to the fold line and tilts from vertical by 180° − hinge.
             XCTAssertEqual(simd_dot(up.normal, SIMD3(1, 0, 0)), 0, accuracy: 1e-5)
-            XCTAssertEqual(Double(acos(up.normal.y)) * 180 / .pi, 180 - a, accuracy: 0.01)
+            XCTAssertEqual(Double(acos(max(-1, min(1, up.normal.y)))) * 180 / .pi, 180 - a, accuracy: 0.01)
         }
     }
 

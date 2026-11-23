@@ -44,7 +44,7 @@ struct Lane {
     static let glassRestitution: Float = 0.45
     /// The floor slopes gently back to the shooter, like an arcade lane's return ramp.
     static let rampAcceleration: Float = 1.7
-    static let shotTimeout = 4.5
+    static let shotTimeout = 3.0
 
     /// Geometry of the lane; updated live while the hinge moves (balls keep flying).
     var slot: ArenaSlot
@@ -305,7 +305,7 @@ struct Lane {
     private mutating func collideBalls(_ events: inout [LaneEvent]) {
         let r = Arena.ballRadius
         for i in balls.indices where balls[i].state == .flying || balls[i].state == .returning {
-            for j in balls.indices where j != i && (j > i || balls[j].state == .racked || balls[j].state == .held) {
+            for j in balls.indices where j != i && (j > i || balls[j].state == .held || (balls[j].state == .racked && balls[i].state == .flying)) {
                 let d = balls[i].p - balls[j].p
                 let dist = simd_length(d)
                 guard dist < 2 * r, dist > 1e-5 else { continue }
@@ -334,8 +334,9 @@ struct Lane {
     private mutating func refill(_ events: inout [LaneEvent]) {
         for i in balls.indices where balls[i].state == .returning {
             let b = balls[i]
-            let home = b.p.z >= rackZ - 0.03 && b.p.y < Arena.ballRadius + 0.02
-            let lost = time - b.returningSince > 3.5
+            // Anywhere in the tray area counts as home: the ball joins the queue and rolls to its spot.
+            let home = b.p.z >= rackZ - 0.15 && b.p.y < Arena.ballRadius + 0.03 && b.v.y <= 0.05
+            let lost = time - b.returningSince > 2.5
             if home || lost {
                 balls[i].state = .racked
                 balls[i].v = .zero

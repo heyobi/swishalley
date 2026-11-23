@@ -63,7 +63,7 @@ final class GameTests: XCTestCase {
     /// Below 90° the leaning glass is a wall: a high lob bounces off it.
     func testLeaningGlassIsAWall() {
         var lane = Lane(slot: stage(70).arenas[0])
-        lane.launch(velocity: SIMD3(0, 2.6, -0.9), power: 1.5)
+        lane.launch(velocity: SIMD3(0, 3.0, -0.4), power: 1.5)
         var evs: [LaneEvent] = []
         for _ in 0..<240 { evs += lane.step(dt: 1 / 60) }
         XCTAssert(evs.contains { if case .glass = $0 { return true }; return false }, "\(evs)")
@@ -99,8 +99,9 @@ final class GameTests: XCTestCase {
             }
             for e in lane.step(dt: 1 / 60) { if case .score = e { scores += 1 } }
         }
-        XCTAssertGreaterThan(shots, 6)
-        XCTAssertGreaterThan(scores, shots / 2)
+        let states = lane.balls.map { "\($0.state) \($0.p)" }.joined(separator: "; ")
+        XCTAssertGreaterThan(shots, 6, states)
+        XCTAssertGreaterThan(scores, shots / 2, states)
     }
 
     func testMovingHoopStillScores() {
