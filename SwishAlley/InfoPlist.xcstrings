@@ -1,0 +1,62 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSCameraUsageDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İsteğe bağlı: Swish Alley, potayı senin bakış açından çizip ekrandan 3B fırlıyormuş gibi göstermek için ön kamerayla gözlerinin nerede olduğunu bulabilir. Görüntüler bu cihazda incelenir; asla kaydedilmez, saklanmaz ya da gönderilmez. Oyun kamera olmadan da aynı şekilde oynanır."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opcional: Swish Alley puede usar la cámara frontal para saber dónde están tus ojos y dibujar el aro desde tu punto de vista, saliendo de la pantalla en 3D. Las imágenes se analizan en este dispositivo y nunca se graban, guardan ni envían. El juego funciona igual sin ella."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opcional: o Swish Alley pode usar a câmera frontal para saber onde estão os seus olhos e desenhar a cesta do seu ponto de vista, saltando da tela em 3D. As imagens são analisadas neste aparelho e nunca são gravadas, guardadas ou enviadas. O jogo funciona igual sem ela."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional: Swish Alley kann mit der Frontkamera erkennen, wo deine Augen sind, und den Korb aus deiner Sicht zeichnen, sodass er in 3D aus dem Bildschirm ragt. Bilder werden auf diesem Gerät ausgewertet und nie aufgezeichnet, gespeichert oder gesendet. Das Spiel funktioniert ohne Kamera genauso."
+          }
+        }
+      }
+    },
+    "CFBundleDisplayName": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swish Alley"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swish Alley"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swish Alley"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swish Alley"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
