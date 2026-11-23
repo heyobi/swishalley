@@ -107,6 +107,8 @@ final class Gym {
     func swish(arena i: Int, strength: Float) { guard i < arenas.count else { return }; arenas[i].net.swish(strength) }
     func rattle(arena i: Int, strength: Float) { guard i < arenas.count else { return }; arenas[i].net.rattle(strength); arenas[i].flashRim(strength) }
     func flashBoard(arena i: Int) { guard i < arenas.count else { return }; arenas[i].flashBoard() }
+    func splat(arena i: Int, kind: Projectile, at p: SIMD3<Float>) { guard i < arenas.count else { return }; arenas[i].splat(kind, at: p) }
+    func toast(arena i: Int, at p: SIMD3<Float>) { guard i < arenas.count else { return }; arenas[i].toast(at: p) }
 
     /// A burst of glowing sparks around the rim (arena units).
     func burst(arena i: Int, at p: SIMD3<Float>, count: Int, colors: [UInt32], t: Double) {
@@ -178,6 +180,13 @@ final class ArenaNodes {
     private var boardFlash: Float = 0
     private var skin: BallSkin
     private var showingFire = false
+    private var spheres: [SCNNode] = []
+    private var propNodes: [[Projectile: SCNNode]] = []
+    private var halos: [SCNNode] = []
+    private let goldMat = SCNMaterial()
+    private struct Bit { var node: SCNNode; var p: SIMD3<Float>; var v: SIMD3<Float>; var spin: SIMD3<Float>; var born: Double; var life: Double; var resting: Bool }
+    private var bits: [Bit] = []
+    private var now: Double = 0
 
     init(slot: ArenaSlot, theme: ArenaTheme, skin: BallSkin) {
         self.slot = slot
@@ -197,11 +206,21 @@ final class ArenaNodes {
         slot = s
         root.simdTransform = s.placement.matrix
         hoop.simdPosition = SIMD3(hoop.simdPosition.x, 0, s.setback)
-        rimNode.simdPosition = SIMD3(0, Arena.rimHeight, s.crease + Arena.rimRadius + Arena.rimTube)
-        net.node.simdPosition = rimNode.simdPosition
+        placeRim(scale: 1)
     }
 
     // MARK: Building
+
+    private var rimScale: Float = 1
+
+    /// Rim and net centred so the rim's back edge stays on the crease edge, at any size.
+    private func placeRim(scale k: Float) {
+        rimScale = k
+        rimNode.simdPosition = SIMD3(0, Arena.rimHeight, slot.crease + Arena.rimRadius * k + Arena.rimTube)
+        rimNode.simdScale = SIMD3(k, 1, k)
+        net.node.simdPosition = rimNode.simdPosition
+        net.node.simdScale = SIMD3(k, 1, k)
+    }
 
     private func mat(_ c: UIColor, lambert: Bool = true) -> SCNMaterial {
         let m = SCNMaterial()
@@ -365,13 +384,43 @@ final class ArenaNodes {
         blob.diffuse.contents = Textures.blob()
         blob.writesToDepthBuffer = false
         blob.blendMode = .alpha
+        goldMat.lightingModel = .physicallyBased
+        goldMat.diffuse.contents = UIColor(hex: 0xffc83a)
+        goldMat.metalness.contents = 0.85
+        goldMat.roughness.contents = 0.25
+        goldMat.emission.contents = UIColor(hex: 0xffb21f)
+        goldMat.emission.intensity = 0.5
         for _ in 0..<Lane.ballCount {
             let s = SCNSphere(radius: CGFloat(Arena.ballRadius))
             s.segmentCount = 36
             s.materials = [ballMat]
-            let n = SCNNode(geometry: s)
+            let n = SCNNode()
+            let sphere = SCNNode(geometry: s)
+            n.addChildNode(sphere)
+            spheres.append(sphere)
+            var props: [Projectile: SCNNode] = [:]
+            for k in Projectile.wild {
+                let pn = Props.make(k)
+                pn.isHidden = true
+                n.addChildNode(pn)
+                props[k] = pn
+            }
+            propNodes.append(props)
             root.addChildNode(n)
             balls.append(n)
+            let hm = SCNMaterial()
+            hm.lightingModel = .constant
+            hm.diffuse.contents = Textures.glowDot()
+            hm.multiply.contents = UIColor(hex: 0xffc83a)
+            hm.blendMode = .add
+            hm.writesToDepthBuffer = false
+            let hp = SCNPlane(width: CGFloat(Arena.ballRadius * 4.2), height: CGFloat(Arena.ballRadius * 4.2))
+            hp.materials = [hm]
+            let halo = SCNNode(geometry: hp)
+            halo.constraints = [SCNBillboardConstraint()]
+            halo.isHidden = true
+            root.addChildNode(halo)
+            halos.append(halo)
             orientations.append(simd_quatf(angle: Float.random(in: 0...6), axis: simd_normalize(SIMD3(0.3, 1, 0.2))))
             let sh = SCNNode(geometry: SCNPlane(width: CGFloat(Arena.ballRadius * 2.6), height: CGFloat(Arena.ballRadius * 2.6)))
             sh.geometry?.materials = [blob]
@@ -417,10 +466,22 @@ final class ArenaNodes {
     // MARK: Frame
 
     func update(lane: Lane, fire: Bool, t: Double, dt: Float) {
+        now = t
         hoop.simdPosition = SIMD3(lane.slide, 0, lane.slot.setback)
+        if abs(lane.rimScale - rimScale) > 0.001 { placeRim(scale: lane.rimScale) }
         for (i, b) in lane.balls.enumerated() where i < balls.count {
             let n = balls[i]
             n.simdPosition = b.p
+            // Which object, golden or not, popping in after a splat.
+            spheres[i].isHidden = b.kind != .ball
+            for (k, pn) in propNodes[i] { pn.isHidden = k != b.kind }
+            spheres[i].geometry?.materials = [b.golden ? goldMat : ballMat]
+            halos[i].isHidden = !b.golden || b.state == .returning
+            halos[i].simdPosition = b.p
+            halos[i].opacity = CGFloat(0.55 + 0.25 * sin(t * 6))
+            let since = Float(lane.time - b.hiddenUntil)
+            let pop: Float = since < 0 ? 0.001 : (since < 0.22 ? 0.3 + 0.7 * since / 0.22 + 0.15 * sin(since / 0.22 * .pi) : 1)
+            n.simdScale = SIMD3(repeating: max(0.001, pop))
             let w = b.spin
             let speed = simd_length(w)
             if speed > 1e-3 {
@@ -465,6 +526,70 @@ final class ArenaNodes {
         rimMat.emission.intensity = CGFloat(rimFlash * 1.2 + (fire ? 0.6 : 0))
         boardFrameMat.emission.intensity = CGFloat(1.4 + boardFlash * 2.5)
         net.update(t: t, dt: dt)
+        updateBits(dt: dt)
+    }
+
+    // MARK: Debris
+
+    /// A breakable object burst at `p` (arena units): chunks fly out and settle on the floor, then fade.
+    func splat(_ kind: Projectile, at p: SIMD3<Float>) {
+        for (k, (g, m)) in Props.debris(kind).enumerated() {
+            g.materials = [m]
+            let n = SCNNode(geometry: g)
+            root.addChildNode(n)
+            let a = Float(k) * 2.399 + Float.random(in: -0.3...0.3)
+            let sp = Float.random(in: 0.25...0.8)
+            let v = SIMD3<Float>(cos(a) * sp, Float.random(in: 0.5...1.3), sin(a) * sp * 0.8)
+            bits.append(Bit(node: n, p: p + SIMD3(0, 0.01, 0), v: v, spin: SIMD3(Float.random(in: -14...14), Float.random(in: -14...14), Float.random(in: -14...14)),
+                            born: now, life: Double.random(in: 2.4...3.2), resting: false))
+        }
+        trimBits()
+    }
+
+    /// Two slices of toast pop out of a toaster that landed hard.
+    func toast(at p: SIMD3<Float>) {
+        for side: Float in [-1, 1] {
+            let (g, m) = Props.toast()
+            g.materials = [m]
+            let n = SCNNode(geometry: g)
+            root.addChildNode(n)
+            bits.append(Bit(node: n, p: p + SIMD3(side * 0.012, 0.04, 0), v: SIMD3(side * 0.25, 1.5, Float.random(in: -0.2...0.2)),
+                            spin: SIMD3(side * 9, 3, 6), born: now, life: 2.6, resting: false))
+        }
+        trimBits()
+    }
+
+    private func trimBits() {
+        while bits.count > 90 { bits.removeFirst().node.removeFromParentNode() }
+    }
+
+    private func updateBits(dt: Float) {
+        guard !bits.isEmpty, dt > 0 else { return }
+        var keep: [Bit] = []
+        for var b in bits {
+            let age = now - b.born
+            if age > b.life { b.node.removeFromParentNode(); continue }
+            if !b.resting {
+                b.v.y -= Arena.gravity * dt
+                b.p += b.v * dt
+                let floorY: Float = 0.006
+                if b.p.y < floorY {
+                    b.p.y = floorY
+                    b.v.y = -b.v.y * 0.25
+                    b.v.x *= 0.6; b.v.z *= 0.6
+                    b.spin *= 0.5
+                    if abs(b.v.y) < 0.08 && simd_length(SIMD2(b.v.x, b.v.z)) < 0.05 { b.resting = true }
+                }
+                let hw = slot.halfWidth - 0.01
+                if abs(b.p.x) > hw { b.p.x = max(-hw, min(hw, b.p.x)); b.v.x = -b.v.x * 0.4 }
+                b.node.simdEulerAngles += b.spin * dt
+            }
+            b.node.simdPosition = b.p
+            let fade = Float(max(0, min(1, (b.life - age) / 0.6)))
+            b.node.opacity = CGFloat(fade)
+            keep.append(b)
+        }
+        bits = keep
     }
 }
 

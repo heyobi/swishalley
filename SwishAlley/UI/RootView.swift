@@ -113,6 +113,17 @@ struct RootView: View {
     @ViewBuilder
     private func playing(_ l: SceneLayout) -> some View {
         if let m = engine.match {
+            // A warm glow around the player's side while on fire.
+            ForEach(Array(l.hud.shootZones.enumerated()), id: \.offset) { i, z in
+                let p = l.presentation == .duel ? i : 0
+                if m.players[safe: p]?.onFire == true || m.bonus(p) != nil {
+                    // Each glow stays on its own side of the crease.
+                    FireGlow(hot: m.players[safe: p]?.unstoppable == true).place(z)
+                    if l.presentation == .stage, let b = l.hud.banner {
+                        FireGlow(hot: m.players[safe: p]?.unstoppable == true).place(b)
+                    }
+                }
+            }
             ForEach(Array(l.hud.panels.enumerated()), id: \.offset) { _, p in
                 ScorePanel(match: m, player: p.player, sideways: abs(p.rotation) == 90, pause: { engine.pauseToMenu() })
                     .place(p.rect, rotation: p.rotation)

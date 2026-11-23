@@ -6,6 +6,8 @@ enum Voice: Int32, CaseIterable {
     case kick = 0, snare, hat, clap, bass, keys, pad, lead, pluck
     // Effects
     case swish, rim, board, bounce, buzzer, chime, whoosh, tick, glass
+    // Wild Toss and the crowd
+    case splat, squeak, cheer
 }
 
 /// One note of a piece, in beats from the start of its loop. Layer 1 notes play only when the game is hot
@@ -306,6 +308,9 @@ final class Synth {
             case .whoosh: v.a0 = 0; v.release = decay(0.15)
             case .tick: v.a0 = 1; v.k0 = decay(0.012); v.release = decay(0.01)
             case .glass: v.a0 = 1; v.a1 = 1; v.k0 = decay(0.18); v.k1 = decay(0.01); v.release = decay(0.1)
+            case .splat: v.a0 = 1; v.a1 = 1; v.k0 = decay(0.16); v.k1 = decay(0.09); v.f3 = 1; v.release = decay(0.08)
+            case .squeak: v.a0 = 1; v.release = decay(0.04)
+            case .cheer: v.a0 = 0; v.release = decay(0.5)
             }
             voices[slot] = v
         }
@@ -483,6 +488,32 @@ final class Synth {
                         let nz = noise(&v)
                         x = (sinf(twoPi * v.p0) * v.a0 + nz * v.a1 * 0.4) * 0.5
                         v.a0 *= v.k0; v.a1 *= v.k1
+                    case 18: // splat: a wet burst of low noise and a soft thump that sags in pitch
+                        let nz = noise(&v)
+                        v.f1 += (nz - v.f1) * lpc(900 + 2400 * v.a1)
+                        v.f3 *= 0.9993
+                        v.p0 += v.freq * (0.6 + 0.6 * v.f3) * dt
+                        x = v.f1 * v.a1 * 0.9 + sinf(twoPi * v.p0) * v.a0 * 0.55
+                        x = tanhf(x * 1.3)
+                        v.a0 *= v.k0; v.a1 *= v.k1
+                    case 19: // squeak: a rubber-toy chirp up and back down
+                        let k = min(1, v.t / max(v.dur, 0.05))
+                        let bend = 1 + 0.55 * sinf(.pi * k) + 0.03 * sinf(twoPi * 28 * v.t)
+                        v.p0 += v.freq * bend * dt
+                        v.p0 -= floorf(v.p0)
+                        let tri = 4 * abs(v.p0 - 0.5) - 1
+                        x = (tri * 0.7 + sinf(twoPi * v.p0) * 0.3) * 0.32 * min(1, v.t * 200)
+                        v.a0 = 1
+                    case 20: // cheer: a crowd, band-passed noise swelling, with a ripple of claps
+                        let nz = noise(&v)
+                        v.f1 += (nz - v.f1) * lpc(2200)
+                        v.f2 += (v.f1 - v.f2) * lpc(500)
+                        let swell = min(1, v.t / 0.25)
+                        let ripple = 0.75 + 0.25 * sinf(twoPi * 9 * v.t + 3 * sinf(twoPi * 1.3 * v.t))
+                        let clap: Float = (v.f3 > 0.995) ? 1 : 0
+                        v.f3 = (nz + 1) * 0.5
+                        x = (v.f1 - v.f2) * 0.9 * swell * ripple + clap * nz * 0.25
+                        v.a0 = 1
                     default:
                         v.a0 = 0
                     }
@@ -491,7 +522,7 @@ final class Synth {
                     l += x * g * v.panL
                     r += x * g * v.panR
                     v.t += dt
-                    let sustained = v.voice == 6 || v.voice == 7 || v.voice == 13 || v.voice == 15
+                    let sustained = v.voice == 6 || v.voice == 7 || v.voice == 13 || v.voice == 15 || v.voice == 19 || v.voice == 20
                     let silent = v.gate < 0.0005 || (!sustained && v.a0 < 0.0003 && v.a1 < 0.0003) || v.t > 10
                     if silent { v.active = 0 }
                     voices[i] = v

@@ -55,8 +55,20 @@ struct ScorePanel: View {
                     .contentTransition(.numericText())
             }
             if p.onFire {
-                Image(systemName: "flame.fill").foregroundStyle(Neon.amber).font(.title3)
-                    .accessibilityLabel(Text("On fire"))
+                HStack(spacing: 1) {
+                    Image(systemName: "flame.fill")
+                    if p.unstoppable { Image(systemName: "flame.fill") }
+                    Text("×\(p.streak)").font(.system(size: 13, weight: .heavy, design: .rounded).monospacedDigit())
+                }
+                .foregroundStyle(p.unstoppable ? Neon.pink : Neon.amber).font(.title3)
+                .accessibilityLabel(Text("On fire"))
+            }
+            if let b = match.bonus(player) {
+                Label(b == .bigHoop ? String(localized: "Big hoop") : String(localized: "×2"), systemImage: b == .bigHoop ? "circle.dashed" : "star.fill")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(Capsule().fill(Color(red: 1, green: 0.78, blue: 0.23).opacity(0.85)))
+                    .foregroundStyle(Neon.ink)
             }
             Spacer(minLength: 4)
             if match.timed {
@@ -214,6 +226,22 @@ struct DuelResultBadge: View {
         }
         .padding(18)
         .glass(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .allowsHitTesting(false)
+    }
+}
+
+/// A pulsing edge glow while a player is on fire.
+struct FireGlow: View {
+    var hot = false
+    var body: some View {
+        TimelineView(.animation) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            let a = 0.35 + 0.25 * sin(t * (hot ? 9 : 5))
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(LinearGradient(colors: [hot ? Neon.pink : Neon.amber, .orange.opacity(0.4), hot ? Neon.pink : Neon.amber], startPoint: .top, endPoint: .bottom), lineWidth: 6)
+                .blur(radius: 6)
+                .opacity(a)
+        }
         .allowsHitTesting(false)
     }
 }

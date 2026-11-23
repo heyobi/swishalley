@@ -79,35 +79,62 @@ struct LockerSheet: View {
     @EnvironmentObject var store: Store
     @Binding var sheet: SheetKind?
     @Environment(\.dismiss) private var dismiss
+    private let grid = [GridItem(.adaptive(minimum: 140), spacing: 12)]
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Arena") {
-                    ForEach(ArenaTheme.all) { t in
-                        row(title: t.name, locked: !t.free && !store.pro, selected: engine.themeID == t.id,
-                            swatch: [Color(uiColor: UIColor(hex: t.neonA)), Color(uiColor: UIColor(hex: t.neonB)), Color(uiColor: UIColor(hex: t.floorLight))]) {
-                            engine.themeID = t.id
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    header("Arena")
+                    LazyVGrid(columns: grid, spacing: 12) {
+                        ForEach(ArenaTheme.all) { t in
+                            card(image: Thumbnails.arena(t), title: t.name, locked: !t.free && !store.pro, selected: engine.themeID == t.id, wide: true) {
+                                engine.themeID = t.id
+                            }
+                        }
+                    }
+                    header("Ball")
+                    LazyVGrid(columns: grid, spacing: 12) {
+                        ForEach(BallSkin.all) { b in
+                            card(image: Thumbnails.ball(b), title: b.name, locked: !b.free && !store.pro, selected: engine.skinID == b.id) {
+                                engine.skinID = b.id
+                            }
+                        }
+                    }
+                    header("Wild Toss")
+                    Text("In Wild Toss mode every throw is one of these. Miss and the fruit splats.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    LazyVGrid(columns: grid, spacing: 12) {
+                        ForEach(Projectile.wild, id: \.self) { k in
+                            card(image: Thumbnails.object(k), title: objectName(k), locked: !store.pro, selected: false) {
+                                engine.start(.wildToss)
+                                dismiss()
+                            }
+                        }
+                    }
+                    header("Music")
+                    VStack(spacing: 8) {
+                        ForEach(Tracks.all.filter { Tracks.roundIDs.contains($0.id) }) { t in
+                            Button {
+                                engine.trackID = t.id
+                                if !engine.musicOn { engine.musicOn = true }
+                                Synth.shared.play(t.id)
+                                Haptics.shared.tap()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "music.note").foregroundStyle(Neon.cyan)
+                                    Text(t.title).foregroundStyle(.primary)
+                                    Spacer()
+                                    if engine.trackID == t.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(Neon.pink) }
+                                }
+                                .padding(12)
+                                .glass(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
-                Section("Ball") {
-                    ForEach(BallSkin.all) { b in
-                        row(title: b.name, locked: !b.free && !store.pro, selected: engine.skinID == b.id,
-                            swatch: [Color(uiColor: UIColor(hex: b.base)), Color(uiColor: UIColor(hex: b.stripe ?? b.seams))]) {
-                            engine.skinID = b.id
-                        }
-                    }
-                }
-                Section("Music") {
-                    ForEach(Tracks.all.filter { Tracks.roundIDs.contains($0.id) }) { t in
-                        row(title: t.title, locked: false, selected: engine.trackID == t.id, swatch: []) {
-                            engine.trackID = t.id
-                            if !engine.musicOn { engine.musicOn = true }
-                            Synth.shared.play(t.id)
-                        }
-                    }
-                }
+                .padding(16)
             }
             .navigationTitle("Locker")
             .navigationBarTitleDisplayMode(.inline)
@@ -116,22 +143,45 @@ struct LockerSheet: View {
         }
     }
 
-    private func row(title: String, locked: Bool, selected: Bool, swatch: [Color], pick: @escaping () -> Void) -> some View {
+    private func header(_ key: LocalizedStringKey) -> some View {
+        Text(key).font(.system(size: 13, weight: .heavy, design: .rounded)).textCase(.uppercase).foregroundStyle(.secondary).padding(.top, 6)
+    }
+
+    private func objectName(_ k: Projectile) -> String {
+        switch k {
+        case .melon: return String(localized: "Watermelon")
+        case .duck: return String(localized: "Rubber duck")
+        case .toaster: return String(localized: "Toaster")
+        case .pumpkin: return String(localized: "Pumpkin")
+        case .ball: return String(localized: "Ball")
+        }
+    }
+
+    private func card(image: UIImage, title: String, locked: Bool, selected: Bool, wide: Bool = false, pick: @escaping () -> Void) -> some View {
         Button {
             if locked { engine.shotSheet = .paywall; dismiss() } else { pick(); Haptics.shared.tap() }
         } label: {
-            HStack(spacing: 12) {
-                HStack(spacing: -6) {
-                    ForEach(Array(swatch.enumerated()), id: \.offset) { _, c in
-                        Circle().fill(c).frame(width: 22, height: 22).overlay(Circle().stroke(.black.opacity(0.3), lineWidth: 1))
+            VStack(spacing: 6) {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(wide ? 4 / 3 : 1, contentMode: .fill)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(alignment: .topTrailing) {
+                        if locked {
+                            Image(systemName: "lock.fill").font(.caption.weight(.bold)).padding(6).background(.ultraThinMaterial, in: Circle()).padding(6)
+                        } else if selected {
+                            Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(Neon.pink).padding(6)
+                        }
                     }
-                }
-                Text(title).foregroundStyle(.primary)
-                Spacer()
-                if locked { Image(systemName: "lock.fill").foregroundStyle(.secondary) }
-                else if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(Neon.pink) }
+                    .opacity(locked ? 0.75 : 1)
+                Text(title).font(.system(size: 14, weight: .bold, design: .rounded)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.7)
             }
+            .padding(8)
+            .glass(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(selected ? Neon.pink : .clear, lineWidth: 2))
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(Text(locked ? "\(title), Pro" : title))
     }
 }
@@ -148,14 +198,13 @@ struct PaywallSheet: View {
                         .font(.system(size: 64))
                         .foregroundStyle(LinearGradient(colors: [Neon.amber, Neon.pink], startPoint: .top, endPoint: .bottom))
                     Text("Swish Alley Pro").font(.system(size: 30, weight: .black, design: .rounded))
-                    Text("The whole game, duel included, stays free forever with no ads. Pro is a one-time thank-you that adds more to play with.")
+                    Text("Every mode, duel included, stays free forever with no ads. Pro is a one-time thank-you that adds more things to play with.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 12) {
                         perk("sparkles", String(localized: "Three more arenas"), String(localized: "Retro Cabinet, Rooftop Dusk and Midnight Pier"))
                         perk("basketball.fill", String(localized: "Four more balls"), String(localized: "Retro Stripe, Glow Orb, Chrome and Sunset"))
-                        perk("timer", String(localized: "Overtime mode"), String(localized: "30 seconds, every basket adds two more"))
-                        perk("arrow.left.and.right", String(localized: "Drift mode"), String(localized: "The hoop glides for the whole minute"))
+                        perk("party.popper.fill", String(localized: "Wild Toss"), String(localized: "Throw watermelons, rubber ducks, toasters and pumpkins. Miss and they splat."))
                     }
                     .padding(16)
                     .glass(RoundedRectangle(cornerRadius: 20, style: .continuous))

@@ -40,11 +40,11 @@ struct MenuView: View {
                 .pickerStyle(.segmented)
                 .accessibilityLabel(Text("Duel style"))
                 HStack(spacing: 10) {
-                    ModeButton(title: String(localized: "Overtime"), detail: store.pro ? bestText(.overtime) : String(localized: "Pro"),
-                               symbol: store.pro ? "timer" : "lock.fill", tint: Neon.amber) { engine.start(.overtime) }
-                    ModeButton(title: String(localized: "Drift"), detail: store.pro ? bestText(.drift) : String(localized: "Pro"),
-                               symbol: store.pro ? "arrow.left.and.right" : "lock.fill", tint: Neon.cyan) { engine.start(.drift) }
+                    ModeButton(title: String(localized: "Overtime"), detail: bestText(.overtime), symbol: "timer", tint: Neon.amber) { engine.start(.overtime) }
+                    ModeButton(title: String(localized: "Drift"), detail: bestText(.drift), symbol: "arrow.left.and.right", tint: Neon.cyan) { engine.start(.drift) }
                 }
+                ModeButton(title: String(localized: "Wild Toss"), detail: store.pro ? bestText(.wildToss) : String(localized: "Watermelons, ducks, toasters · Pro"),
+                           symbol: store.pro ? "party.popper.fill" : "lock.fill", tint: Neon.pink) { engine.start(.wildToss) }
                 HStack(spacing: 10) {
                     SmallButton(title: String(localized: "Locker"), symbol: "tshirt.fill") { sheet = .locker }
                     SmallButton(title: String(localized: "Settings"), symbol: "gearshape.fill") { sheet = .settings }
@@ -68,6 +68,7 @@ struct MenuView: View {
         switch m {
         case .overtime: return String(localized: "+2 s per basket")
         case .drift: return String(localized: "The hoop never stops")
+        case .wildToss: return String(localized: "Throw silly things")
         default: return String(localized: "60 seconds")
         }
     }

@@ -2,6 +2,23 @@ import simd
 
 enum BallState: Equatable { case racked, held, flying, returning }
 
+/// What is being thrown. Wild Toss (Pro) swaps the basketball for silly things; the physics stays fair (same
+/// size and arc), only the look, the sound and what happens on a hard landing change.
+enum Projectile: String, CaseIterable, Equatable {
+    case ball, melon, duck, toaster, pumpkin
+    /// Breaks apart on a hard landing.
+    var breaks: Bool { self == .melon || self == .pumpkin }
+    var bounce: Float {
+        switch self {
+        case .ball: return 1
+        case .duck: return 1.12
+        case .toaster: return 0.55
+        case .melon, .pumpkin: return 0.6
+        }
+    }
+    static let wild: [Projectile] = [.melon, .duck, .toaster, .pumpkin]
+}
+
 struct Ball: Equatable {
     var id: Int
     var p: SIMD3<Float>
@@ -18,6 +35,11 @@ struct Ball: Equatable {
     var returningSince: Double = 0
     /// Below the rim inside the net after a basket.
     var inNetUntil: Double = 0
+    var kind: Projectile = .ball
+    /// A golden ball gives a bonus when it goes in.
+    var golden = false
+    /// A fresh object pops in after a splat: hidden until then.
+    var hiddenUntil: Double = 0
 }
 
 enum LaneEvent: Equatable {
@@ -30,6 +52,10 @@ enum LaneEvent: Equatable {
     case miss(ball: Int)
     case launch(ball: Int, power: Float)
     case reracked(ball: Int)
+    /// A breakable object hit the floor hard and burst.
+    case splat(ball: Int, kind: Projectile, at: SIMD3<Float>)
+    /// A golden ball went in.
+    case golden(ball: Int)
 }
 
 /// One arcade lane: the balls, the hoop and every surface the balls touch, simulated in arena units with
@@ -52,19 +78,37 @@ struct Lane {
     /// Sideways offset of the hoop (and its backboard).
     var slide: Float = 0
     private(set) var time: Double = 0
-    private var nextShotID = 0
+    /// Rack queue, front first: a stable order, so two balls never fight over a spot.
+    private(set) var order: [Int] = []
+    /// Hoop size (bonus "Big Hoop" grows it).
+    var rimScale: Float = 1
+    /// Wild Toss: every ball that comes back is a new silly object.
+    var wild = false { didSet { if wild != oldValue { for i in balls.indices where balls[i].state == .racked { balls[i].kind = wild ? nextWild() : .ball } } } }
+    private var rng = SplitMix(seed: 42)
 
     init(slot: ArenaSlot) {
         self.slot = slot
         for i in 0..<Self.ballCount {
             balls.append(Ball(id: i, p: rackPosition(queue: i)))
+            order.append(i)
         }
+    }
+
+    private mutating func nextWild() -> Projectile {
+        Projectile.wild[Int(rng.next() % UInt64(Projectile.wild.count))]
+    }
+
+    /// The next ball to come up after the one on the spot turns golden.
+    mutating func markGolden() {
+        let pick = order.count > 1 ? order[1] : order.first
+        if let i = pick { balls[i].golden = true }
     }
 
     // MARK: Geometry
 
     var rackZ: Float { min(Arena.rackDistance, slot.depth - 0.1) }
-    var rimCenter: SIMD3<Float> { Arena.rimCenter(slide: slide, back: slot.crease + slot.setback) }
+    var rimRadius: Float { Arena.rimRadius * rimScale }
+    var rimCenter: SIMD3<Float> { SIMD3(slide, Arena.rimHeight, slot.crease + slot.setback + rimRadius + Arena.rimTube) }
     /// Height of a glass ceiling over the lane (duel), if any.
     var ceiling: Float? { slot.walls.filter { $0.normal.y < -0.9 }.map { $0.point.y }.min() }
 
@@ -88,8 +132,9 @@ struct Lane {
 
     /// Index of the ball on the shooting spot, if one is ready.
     var readyBall: Int? {
-        let spot = rackPosition(queue: 0)
-        return balls.firstIndex { ($0.state == .racked || $0.state == .held) && simd_distance($0.p, spot) < 0.02 }
+        guard let i = order.first, balls[i].state == .racked || balls[i].state == .held, time >= balls[i].hiddenUntil else { return nil }
+        if balls[i].state == .held { return i }
+        return simd_distance(balls[i].p, rackPosition(queue: 0)) < 0.02 ? i : nil
     }
 
     var heldBall: Int? { balls.firstIndex { $0.state == .held } }
@@ -118,6 +163,7 @@ struct Lane {
     @discardableResult
     mutating func launch(velocity: SIMD3<Float>, power: Float) -> [LaneEvent] {
         guard let i = heldBall ?? readyBall else { return [] }
+        order.removeAll { $0 == i }
         balls[i].state = .flying
         balls[i].v = velocity
         balls[i].shotTime = time
@@ -191,7 +237,7 @@ struct Lane {
             b.p.y = r
             if b.v.y < 0 {
                 let impact = -b.v.y
-                b.v.y = impact > 0.3 ? impact * Self.floorRestitution : 0
+                b.v.y = impact > 0.3 ? min(impact, impact * Self.floorRestitution * b.kind.bounce) : 0
                 b.v.x *= 0.96; b.v.z *= 0.96
                 b.spin *= 0.8
                 if impact > 0.12 && time - b.lastBounce > 0.06 {
@@ -200,9 +246,25 @@ struct Lane {
                 }
                 if b.state == .flying && !b.resolved {
                     b.resolved = true
+                    b.golden = false
                     events.append(.miss(ball: b.id))
                 }
                 if b.state == .flying { b.state = .returning; b.returningSince = time }
+                if b.kind.breaks && impact > 0.55 {
+                    // Splat: the pieces stay on the floor (renderer) and a fresh object pops up in the rack.
+                    events.append(.splat(ball: b.id, kind: b.kind, at: b.p))
+                    b.state = .racked
+                    b.v = .zero
+                    b.spin = .zero
+                    b.hiddenUntil = time + 0.6
+                    b.kind = wild ? nextWild() : .ball
+                    balls[i] = b
+                    order.removeAll { $0 == i }
+                    order.append(i)
+                    balls[i].p = rackPosition(queue: order.count - 1)
+                    events.append(.reracked(ball: b.id))
+                    return
+                }
             }
             if b.v.y == 0 { b.v.x *= 1 - 0.6 * h; b.v.z *= 1 - (b.state == .returning ? 0.2 : 0.6) * h }
         }
@@ -248,7 +310,8 @@ struct Lane {
         let c = rimCenter
         let rel = b.p - c
         let radial = (rel.x * rel.x + rel.z * rel.z).squareRoot()
-        let ring = radial > 1e-5 ? c + SIMD3(rel.x / radial, 0, rel.z / radial) * Arena.rimRadius : c + SIMD3(Arena.rimRadius, 0, 0)
+        let rimR = rimRadius
+        let ring = radial > 1e-5 ? c + SIMD3(rel.x / radial, 0, rel.z / radial) * rimR : c + SIMD3(rimR, 0, 0)
         let dr = b.p - ring
         let dRing = simd_length(dr)
         let reach = r + Arena.rimTube
@@ -269,9 +332,9 @@ struct Lane {
         if b.p.y < netTop && b.p.y > netBottom && prev.y >= netBottom {
             let rel2 = b.p - c
             let rad2 = (rel2.x * rel2.x + rel2.z * rel2.z).squareRoot()
-            let inner = Arena.rimRadius - Arena.rimTube - r * 0.35
+            let inner = rimR - Arena.rimTube - r * 0.35
             if prev.y >= netTop - 0.001 || time < b.inNetUntil {
-                if rad2 > inner && rad2 < Arena.rimRadius + r {
+                if rad2 > inner && rad2 < rimR + r {
                     let k = inner / rad2
                     b.p.x = c.x + rel2.x * k
                     b.p.z = c.z + rel2.z * k
@@ -283,10 +346,11 @@ struct Lane {
             let t = (prev.y - c.y) / max(prev.y - b.p.y, 1e-6)
             let x = prev + (b.p - prev) * t
             let rad = ((x.x - c.x) * (x.x - c.x) + (x.z - c.z) * (x.z - c.z)).squareRoot()
-            if rad < Arena.rimRadius - Arena.rimTube {
+            if rad < rimR - Arena.rimTube {
                 b.resolved = true
                 b.inNetUntil = time + 0.32
                 events.append(.score(ball: b.id, swish: !b.touchedRim && !b.touchedBoard, bank: b.touchedBoard))
+                if b.golden { b.golden = false; events.append(.golden(ball: b.id)) }
             }
         }
         // A shot that never comes down (stuck on the rim, say) still ends.
@@ -342,26 +406,26 @@ struct Lane {
                 balls[i].state = .racked
                 balls[i].v = .zero
                 balls[i].spin = .zero
-                if lost { balls[i].p = rackPosition(queue: Self.ballCount - 1) }
+                if wild { balls[i].kind = nextWild() }
+                order.removeAll { $0 == i }
+                order.append(i)
+                if lost { balls[i].p = rackPosition(queue: order.count - 1) }
                 events.append(.reracked(ball: b.id))
             }
         }
     }
 
-    /// Queue position of a racked ball: racked balls in id order after the one on the spot.
-    private func queueIndex(of i: Int) -> Int? {
-        let racked = balls.indices.filter { balls[$0].state == .racked || balls[$0].state == .held }
-        // The ball nearest the shooting spot keeps it.
-        let spot = rackPosition(queue: 0)
-        let ordered = racked.sorted { simd_distance(balls[$0].p, spot) < simd_distance(balls[$1].p, spot) }
-        return ordered.firstIndex(of: i)
-    }
+    /// Queue position of a racked ball.
+    private func queueIndex(of i: Int) -> Int? { order.firstIndex(of: i) }
 
     /// Puts every ball back in the rack (new round).
     mutating func reset() {
         for i in balls.indices {
             balls[i] = Ball(id: balls[i].id, p: rackPosition(queue: i))
+            if wild { balls[i].kind = nextWild() }
         }
+        order = Array(balls.indices)
         slide = 0
+        rimScale = 1
     }
 }

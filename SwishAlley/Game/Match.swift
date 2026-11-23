@@ -1,19 +1,22 @@
 import Foundation
 
 enum Mode: String, CaseIterable, Identifiable {
-    case classic, duelRace, duelTurns, practice, overtime, drift
+    case classic, duelRace, duelTurns, practice, overtime, drift, wildToss
     var id: String { rawValue }
 
     var isDuel: Bool { self == .duelRace || self == .duelTurns }
-    var isPro: Bool { self == .overtime || self == .drift }
+    /// Paid content is extra things to play with, never a clock: only Wild Toss (silly objects) needs Pro.
+    var isPro: Bool { self == .wildToss }
+    /// Golden bonus balls show up in timed solo and race modes.
+    var hasBonuses: Bool { self == .classic || self == .overtime || self == .drift || self == .duelRace || self == .wildToss }
     var players: Int { isDuel ? 2 : 1 }
     /// Modes with a saved personal best.
-    var keepsBest: Bool { self == .classic || self == .overtime || self == .drift }
+    var keepsBest: Bool { self == .classic || self == .overtime || self == .drift || self == .wildToss }
 
     /// Round length in seconds (practice has none; turns is per turn).
     var duration: Double? {
         switch self {
-        case .classic, .drift: return 60
+        case .classic, .drift, .wildToss: return 60
         case .duelRace: return 45
         case .duelTurns: return 15
         case .overtime: return 30
@@ -30,12 +33,19 @@ struct PlayerScore: Equatable {
     var streak = 0
     var bestStreak = 0
     var onFire: Bool { streak >= Match.fireStreak }
+    var unstoppable: Bool { streak >= Match.unstoppableStreak }
     var accuracy: Double { shots > 0 ? Double(baskets) / Double(shots) : 0 }
 }
 
 enum MatchPhase: Equatable { case countdown, playing, turnBreak, over }
 
+enum Bonus: String, Equatable { case bigHoop, double }
+
 enum MatchEvent: Equatable {
+    case count(left: Int)      // the countdown before the start
+    case goldenBall(player: Int)
+    case bonus(player: Int, kind: Bonus)
+    case unstoppable(player: Int)
     case basket(player: Int, points: Int, swish: Bool, onFire: Bool, double: Bool)
     case fireOn(player: Int)
     case fireOff(player: Int)
@@ -51,6 +61,9 @@ enum MatchEvent: Equatable {
 struct Match: Equatable {
     static let countdown: Double = 2.4
     static let fireStreak = 3
+    static let unstoppableStreak = 6
+    static let bonusLength: Double = 7
+    static let goldenEvery: Double = 13
     static let finalStretch: Double = 10
     static let turnsEach = 3
     static let turnBreak: Double = 1.6
@@ -71,6 +84,36 @@ struct Match: Equatable {
     private var lastTick = Int.max
     /// Total seconds of play, for the hoop's motion.
     private(set) var playTime: Double = 0
+    /// Active bonus per player and when it ends (in play time).
+    private(set) var bonuses: [Int: (kind: Bonus, until: Double)] = [:]
+    private var nextGolden: Double = 8
+    private var lastCount = 99
+    private var bonusFlip = 0
+
+    static func == (a: Match, b: Match) -> Bool {
+        a.mode == b.mode && a.phase == b.phase && a.players == b.players && a.clock == b.clock && a.timeLeft == b.timeLeft
+            && a.active == b.active && a.playTime == b.playTime && a.bonuses.keys.sorted() == b.bonuses.keys.sorted()
+    }
+
+    func bonus(_ player: Int) -> Bonus? {
+        guard let b = bonuses[player], playTime < b.until else { return nil }
+        return b.kind
+    }
+
+    /// Seconds left on a player's bonus.
+    func bonusLeft(_ player: Int) -> Double { bonuses[player].map { max(0, $0.until - playTime) } ?? 0 }
+
+    /// Rim size for a player's lane (Big Hoop bonus).
+    func hoopScale(player: Int) -> Float { bonus(player) == .bigHoop ? 1.4 : 1 }
+
+    /// A golden ball went in: alternate the two bonuses so both get seen.
+    mutating func goldenScored(player: Int) -> [MatchEvent] {
+        guard player < players.count else { return [] }
+        let kind: Bonus = bonusFlip % 2 == 0 ? .bigHoop : .double
+        bonusFlip += 1
+        bonuses[player] = (kind, playTime + Self.bonusLength)
+        return [.bonus(player: player, kind: kind)]
+    }
 
     init(mode: Mode) {
         self.mode = mode
@@ -113,6 +156,8 @@ struct Match: Equatable {
         clock += dt
         switch phase {
         case .countdown:
+            let left = Int(ceil(Self.countdown - clock))
+            if left < lastCount && left > 0 { lastCount = left; events.append(.count(left: left)) }
             if clock >= Self.countdown {
                 phase = .playing
                 clock = 0
@@ -129,6 +174,10 @@ struct Match: Equatable {
             }
         case .playing:
             playTime += dt
+            if mode.hasBonuses && playTime >= nextGolden && (!timed || timeLeft > 4) {
+                nextGolden = playTime + Self.goldenEvery
+                for p in players.indices where canShoot(p) { events.append(.goldenBall(player: p)) }
+            }
             guard timed else { break }
             timeLeft -= dt
             if !finalAnnounced && isFinalStretch {
@@ -173,9 +222,10 @@ struct Match: Equatable {
         guard player < players.count, phase == .playing || phase == .over || phase == .turnBreak else { return [] }
         var p = players[player]
         let wasOnFire = p.onFire
-        var points = wasOnFire ? 3 : 2
+        let wasUnstoppable = p.unstoppable
+        var points = wasUnstoppable ? 4 : (wasOnFire ? 3 : 2)
         if swish { points += 1 }
-        let double = isFinalStretch
+        let double = isFinalStretch || bonus(player) == .double
         if double { points *= 2 }
         p.points += points
         p.baskets += 1
@@ -185,6 +235,7 @@ struct Match: Equatable {
         players[player] = p
         var events: [MatchEvent] = [.basket(player: player, points: points, swish: swish, onFire: wasOnFire, double: double)]
         if !wasOnFire && p.onFire { events.append(.fireOn(player: player)) }
+        if !wasUnstoppable && p.unstoppable { events.append(.unstoppable(player: player)) }
         if mode == .overtime && phase == .playing {
             timeLeft = min(Self.overtimeCap, timeLeft + Self.overtimeBonus)
         }

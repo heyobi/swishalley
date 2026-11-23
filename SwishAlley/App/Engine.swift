@@ -200,7 +200,7 @@ final class Engine: ObservableObject {
         banners = []
         input.duel = mode.isDuel
         rebuildLayout(force: true)
-        for i in lanes.indices { lanes[i].reset() }
+        for i in lanes.indices { lanes[i].wild = mode == .wildToss; lanes[i].reset() }
         if mode.isDuel { tracker.stop() } else if FaceTracker.authorized && trackingPreferred { tracker.start() }
         playMusic()
         Haptics.shared.tap()
@@ -209,6 +209,7 @@ final class Engine: ObservableObject {
 
     func pauseToMenu() {
         match = nil
+        for i in lanes.indices { lanes[i].wild = false; lanes[i].rimScale = 1 }
         screen = .menu
         input.duel = false
         rebuildLayout(force: true)
@@ -272,7 +273,13 @@ final class Engine: ObservableObject {
             let evs = m.update(dt: Double(dt))
             match = m
             for e in evs { handle(e) }
-            for k in lanes.indices { lanes[k].slide = m.hoopSlide(player: lanes[k].slot.player) }
+            for k in lanes.indices {
+                let p = lanes[k].slot.player
+                lanes[k].slide = m.hoopSlide(player: p)
+                // The hoop grows and shrinks smoothly with the Big Hoop bonus.
+                let want = m.hoopScale(player: p)
+                lanes[k].rimScale += (want - lanes[k].rimScale) * min(1, dt * 6)
+            }
             if m.phase == .over && results == nil {
                 if resultsAt == nil { resultsAt = t + 1.6 }
                 if let at = resultsAt, t >= at { finish() }
@@ -293,7 +300,7 @@ final class Engine: ObservableObject {
         gym.updateCameras(eyes: eyes)
         let fire = lanes.map { lane in match?.players[safe: lane.slot.player]?.onFire ?? false }
         gym.update(lanes: lanes, fire: fire, t: t, dt: dt)
-        let hot = (match?.isFinalStretch ?? false) || fire.contains(true)
+        let hot = (match?.isFinalStretch ?? false) || fire.contains(true) || (match.map { m in (0..<m.players.count).contains { m.bonus($0) != nil } } ?? false)
         Synth.shared.energy = hot ? 1 : 0
     }
 
@@ -311,9 +318,17 @@ final class Engine: ObservableObject {
                 }
                 _ = viewers.update(dets, t: f.time)
             }
-            if let p = viewers.primary, p.confirmed { target = p.position }
+            if let p = viewers.primary, p.confirmed {
+                // Follow the head, but gently: half the movement, capped at 12 cm from the usual eye, so the
+                // lane never swings wildly when the face is lost or the depth estimate jumps.
+                var d = (p.position - slot.eye) * 0.55
+                let cap = 0.12 / l.metresPerUnit
+                let len = simd_length(d)
+                if len > cap { d *= cap / len }
+                target = slot.eye + d
+            }
         }
-        var s = eyeSmooth ?? Spring3(target, omega: 10)
+        var s = eyeSmooth ?? Spring3(target, omega: 7)
         if vp == l.viewports.first {
             _ = s.step(to: target, dt: dt)
             eyeSmooth = s
@@ -418,10 +433,27 @@ final class Engine: ObservableObject {
         case .launch(_, let power):
             Synth.shared.sfx(.whoosh, freq: 1, vel: 0.18 * quiet, pan: pan, dur: 0.16)
             if screen == .playing { Haptics.shared.launch(power) }
-        case .floor(_, let speed):
-            Synth.shared.sfx(.bounce, freq: 92 + Float.random(in: -6...6), vel: min(1, 0.25 + speed * 0.5) * quiet, pan: pan, dur: 0.12)
+        case .floor(let id, let speed):
+            let kind = kindOf(id, lane: k)
+            switch kind {
+            case .duck: Synth.shared.sfx(.squeak, freq: 900 + Float.random(in: -80...80), vel: min(0.8, 0.25 + speed * 0.4) * quiet, pan: pan, dur: 0.22)
+            case .toaster:
+                Synth.shared.sfx(.rim, freq: 320, vel: min(1, 0.3 + speed * 0.5) * quiet, pan: pan, dur: 0.3)
+                if speed > 0.6, let b = ball(id, lane: k) { gym.toast(arena: k, at: b.p) }
+            default: Synth.shared.sfx(.bounce, freq: 92 + Float.random(in: -6...6), vel: min(1, 0.25 + speed * 0.5) * quiet, pan: pan, dur: 0.12)
+            }
             if screen == .playing { Haptics.shared.bounce(speed) }
-        case .rim(_, let speed):
+        case .splat(_, let kind, let at):
+            Synth.shared.sfx(.splat, freq: 110, vel: 0.9 * quiet, pan: pan, dur: 0.3)
+            gym.splat(arena: k, kind: kind, at: at)
+            if screen == .playing { Haptics.shared.board(1) }
+        case .golden:
+            guard screen == .playing, var m = match else { break }
+            let evs = m.goldenScored(player: player)
+            match = m
+            for me in evs { handle(me) }
+        case .rim(let id, let speed):
+            if kindOf(id, lane: k) == .duck { Synth.shared.sfx(.squeak, freq: 1100, vel: 0.4 * quiet, pan: pan, dur: 0.18) }
             Synth.shared.sfx(.rim, freq: 540 + Float.random(in: -30...30), vel: min(1, 0.3 + speed * 0.6) * quiet, pan: pan, dur: 0.5)
             gym.rattle(arena: k, strength: min(1, speed))
             if screen == .playing { Haptics.shared.rim(speed) }
@@ -442,6 +474,8 @@ final class Engine: ObservableObject {
             gym.burst(arena: k, at: rim, count: swish ? 22 : 12, colors: [theme.neonA, theme.neonB, 0xffffff], t: time)
             guard screen == .playing, var m = match else { break }
             Haptics.shared.swish()
+            let streak = m.players[safe: player]?.streak ?? 0
+            if swish || streak >= 2 { Synth.shared.sfx(.cheer, freq: 1, vel: min(0.5, 0.18 + Float(streak) * 0.05), pan: pan, dur: 0.6 + Float(min(streak, 6)) * 0.1) }
             let evs = m.basket(player: player, swish: swish)
             match = m
             for me in evs { handle(me) }
@@ -455,8 +489,33 @@ final class Engine: ObservableObject {
         }
     }
 
+    private func kindOf(_ id: Int, lane k: Int) -> Projectile { ball(id, lane: k)?.kind ?? .ball }
+    private func ball(_ id: Int, lane k: Int) -> Ball? {
+        guard k < lanes.count else { return nil }
+        return lanes[k].balls.first { $0.id == id }
+    }
+
     private func handle(_ e: MatchEvent) {
         switch e {
+        case .count(let left):
+            Synth.shared.sfx(.tick, freq: 880, vel: 0.45, dur: 0.06)
+            _ = left
+        case .goldenBall(let p):
+            for k in lanes.indices where lanes[k].slot.player == p { lanes[k].markGolden() }
+            Synth.shared.sfx(.chime, freq: 1318.5, vel: 0.3, dur: 0.5)
+        case .bonus(let p, let kind):
+            switch kind {
+            case .bigHoop: show(String(localized: "Big hoop!"), detail: String(localized: "Golden ball bonus"), player: p, hot: true)
+            case .double: show(String(localized: "Double points!"), detail: String(localized: "Golden ball bonus"), player: p, hot: true)
+            }
+            Synth.shared.sfx(.whoosh, freq: 1, vel: 0.6, dur: 0.5)
+            Synth.shared.sfx(.cheer, freq: 1, vel: 0.5, dur: 1.2)
+            Haptics.shared.fire()
+        case .unstoppable(let p):
+            show(String(localized: "Unstoppable!"), detail: String(localized: "Baskets worth 4"), player: p, hot: true)
+            Synth.shared.sfx(.cheer, freq: 1, vel: 0.7, dur: 1.6)
+            Synth.shared.sfx(.whoosh, freq: 1, vel: 0.7, dur: 0.8)
+            Haptics.shared.fire()
         case .go:
             Synth.shared.sfx(.buzzer, freq: 440, vel: 0.5, dur: 0.25)
             show(String(localized: "Go!"), player: -1)

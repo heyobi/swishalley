@@ -337,6 +337,34 @@
         }
       }
     },
+    "Baskets worth 4": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her basket 4 sayı"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada canasta vale 4"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada cesta vale 4"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeder Korb zählt 4"
+          }
+        }
+      }
+    },
     "Best %d": {
       "localizations": {
         "tr": {
@@ -361,6 +389,62 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rekord %d"
+          }
+        }
+      }
+    },
+    "Big hoop": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Büyük pota"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aro grande"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cesta grande"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Großer Korb"
+          }
+        }
+      }
+    },
+    "Big hoop!": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Büyük pota!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Aro grande!"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cesta grande!"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Großer Korb!"
           }
         }
       }
@@ -673,6 +757,34 @@
         }
       }
     },
+    "Every mode, duel included, stays free forever with no ads. Pro is a one-time thank-you that adds more things to play with.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düello dahil her mod sonsuza dek ücretsiz ve reklamsız. Pro, oynayacak daha çok şey katan tek seferlik bir teşekkür."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos los modos, duelo incluido, son gratis para siempre y sin anuncios. Pro es un agradecimiento de un solo pago que añade más cosas para jugar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos os modos, duelo incluído, são grátis para sempre e sem anúncios. O Pro é um agradecimento de pagamento único que traz mais coisas para jogar."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeder Modus, Duell inklusive, bleibt für immer gratis und ohne Werbung. Pro ist ein einmaliges Dankeschön mit mehr Sachen zum Spielen."
+          }
+        }
+      }
+    },
     "Face to face · race": {
       "localizations": {
         "tr": {
@@ -897,6 +1009,34 @@
         }
       }
     },
+    "Golden ball bonus": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altın top bonusu"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonus de pelota dorada"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bônus da bola dourada"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goldball-Bonus"
+          }
+        }
+      }
+    },
     "Good game!": {
       "localizations": {
         "tr": {
@@ -1005,6 +1145,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "So wird gespielt"
+          }
+        }
+      }
+    },
+    "In Wild Toss mode every throw is one of these. Miss and the fruit splats.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wild Toss modunda her atış bunlardan biri. Iskalarsan meyve paramparça olur."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En Wild Toss cada tiro es uno de estos. Si fallas, la fruta revienta."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Wild Toss cada arremesso é um destes. Errou, a fruta se espatifa."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Wild-Toss-Modus ist jeder Wurf eins davon. Daneben, und die Frucht platzt."
           }
         }
       }
@@ -1625,6 +1793,34 @@
         }
       }
     },
+    "Pumpkin": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balkabağı"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calabaza"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abóbora"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kürbis"
+          }
+        }
+      }
+    },
     "Race": {
       "localizations": {
         "tr": {
@@ -1733,6 +1929,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "Retro Stripe, Glow Orb, Chrome und Sunset"
+          }
+        }
+      }
+    },
+    "Rubber duck": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lastik ördek"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Patito de goma"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Patinho de borracha"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quietscheente"
           }
         }
       }
@@ -2325,6 +2549,62 @@
         }
       }
     },
+    "Throw silly things": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saçma şeyler fırlat"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lanza cosas absurdas"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arremesse coisas absurdas"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wirf verrückte Sachen"
+          }
+        }
+      }
+    },
+    "Throw watermelons, rubber ducks, toasters and pumpkins. Miss and they splat.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karpuz, lastik ördek, tost makinesi ve balkabağı fırlat. Iskalarsan paramparça olurlar."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lanza sandías, patitos de goma, tostadoras y calabazas. Si fallas, se revientan."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arremesse melancias, patinhos de borracha, torradeiras e abóboras. Errou, elas se espatifam."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wirf Wassermelonen, Quietscheenten, Toaster und Kürbisse. Daneben? Dann platzen sie."
+          }
+        }
+      }
+    },
     "Time": {
       "localizations": {
         "tr": {
@@ -2349,6 +2629,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zeit"
+          }
+        }
+      }
+    },
+    "Toaster": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tost makinesi"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tostadora"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Torradeira"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toaster"
           }
         }
       }
@@ -2437,6 +2745,34 @@
         }
       }
     },
+    "Unstoppable!": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durdurulamaz!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Imparable!"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imparável!"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unaufhaltsam!"
+          }
+        }
+      }
+    },
     "Wait": {
       "localizations": {
         "tr": {
@@ -2465,6 +2801,62 @@
         }
       }
     },
+    "Watermelon": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karpuz"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sandía"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melancia"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wassermelone"
+          }
+        }
+      }
+    },
+    "Watermelons, ducks, toasters · Pro": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karpuz, ördek, tost makinesi · Pro"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sandías, patos, tostadoras · Pro"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melancias, patos, torradeiras · Pro"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melonen, Enten, Toaster · Pro"
+          }
+        }
+      }
+    },
     "Website": {
       "localizations": {
         "tr": {
@@ -2489,6 +2881,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "Website"
+          }
+        }
+      }
+    },
+    "Wild Toss": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wild Toss"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wild Toss"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wild Toss"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wild Toss"
           }
         }
       }
@@ -2545,6 +2965,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "Du bist dran"
+          }
+        }
+      }
+    },
+    "×2": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "×2"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "×2"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "×2"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "×2"
           }
         }
       }

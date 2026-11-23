@@ -317,4 +317,92 @@ final class GameTests: XCTestCase {
             XCTAssert(t.events.allSatisfy { $0.beat >= 0 && $0.beat < t.loopBeats }, t.id)
         }
     }
+
+    // MARK: Rack, Wild Toss, bonuses
+
+    /// Racked balls keep a stable order and never overlap or jitter (build 1 feedback).
+    func testRackIsStableAndBallsNeverOverlap() {
+        var lane = Lane(slot: stage(110).arenas[0])
+        for _ in 0..<3 {
+            lane.launch(velocity: lane.idealLaunch()!, power: 1)
+            for _ in 0..<20 { lane.step(dt: 1 / 60) }
+        }
+        for _ in 0..<(60 * 5) { lane.step(dt: 1 / 60) }
+        var previous = lane.balls.map(\.p)
+        for _ in 0..<60 {
+            lane.step(dt: 1 / 60)
+            let racked = lane.balls.filter { $0.state == .racked }
+            for a in racked { for b in racked where a.id < b.id { XCTAssertGreaterThan(simd_distance(a.p, b.p), Arena.ballRadius * 1.9) } }
+            let now = lane.balls.map(\.p)
+            for (x, y) in zip(previous, now) { XCTAssertLessThan(simd_distance(x, y), 0.002, "a racked ball moved") }
+            previous = now
+        }
+        XCTAssertEqual(Set(lane.order), Set(lane.balls.indices))
+    }
+
+    func testWatermelonSplatsAndANewOnePopsUp() {
+        var lane = Lane(slot: stage(110).arenas[0])
+        lane.wild = true
+        lane.reset()
+        XCTAssert(lane.balls.allSatisfy { $0.kind != .ball })
+        // Force a melon on the spot and lob it short so it lands hard.
+        var evs: [LaneEvent] = []
+        var tries = 0
+        while !evs.contains(where: { if case .splat = $0 { return true }; return false }) && tries < 12 {
+            tries += 1
+            for _ in 0..<(60 * 2) where lane.readyBall == nil { lane.step(dt: 1 / 60) }
+            lane.launch(velocity: SIMD3(0, 2.2, -0.2), power: 1)
+            for _ in 0..<(60 * 2) { evs += lane.step(dt: 1 / 60) }
+        }
+        XCTAssert(evs.contains { if case .splat(_, let k, _) = $0 { return k.breaks }; return false }, "\(evs)")
+        XCTAssert(evs.contains { if case .miss = $0 { return true }; return false })
+    }
+
+    func testGoldenBallGivesABiggerHoop() {
+        var m = Match(mode: .classic)
+        var evs: [MatchEvent] = []
+        var t = 0.0
+        while t < 12 { evs += m.update(dt: 0.05); t += 0.05 }
+        XCTAssert(evs.contains(.goldenBall(player: 0)))
+        let bonus = m.goldenScored(player: 0)
+        XCTAssertEqual(bonus, [.bonus(player: 0, kind: .bigHoop)])
+        XCTAssertEqual(m.hoopScale(player: 0), 1.4)
+        // A bigger rim still keeps its back edge on the crease, and a perfect shot still goes in.
+        var lane = Lane(slot: stage(110).arenas[0])
+        lane.rimScale = 1.4
+        XCTAssertEqual(lane.rimCenter.z - lane.rimRadius - Arena.rimTube, lane.slot.crease, accuracy: 1e-6)
+        lane.launch(velocity: lane.idealLaunch()!, power: 1)
+        XCTAssert(scored(resolve(&lane)))
+        // The next golden ball doubles points.
+        _ = m.update(dt: Match.bonusLength + 0.1)
+        XCTAssertEqual(m.goldenScored(player: 0), [.bonus(player: 0, kind: .double)])
+        XCTAssertEqual(m.basket(player: 0, swish: false).first, .basket(player: 0, points: 4, swish: false, onFire: false, double: true))
+    }
+
+    func testGoldenFlagTravelsWithTheBall() {
+        var lane = Lane(slot: stage(110).arenas[0])
+        lane.markGolden()
+        XCTAssertEqual(lane.balls.filter(\.golden).count, 1)
+        var evs: [LaneEvent] = []
+        for _ in 0..<4 {
+            for _ in 0..<(60 * 2) where lane.readyBall == nil { lane.step(dt: 1 / 60) }
+            lane.launch(velocity: lane.idealLaunch()!, power: 1)
+            for _ in 0..<90 { evs += lane.step(dt: 1 / 60) }
+        }
+        XCTAssert(evs.contains { if case .golden = $0 { return true }; return false }, "\(evs)")
+    }
+
+    func testUnstoppableAtSixInARow() {
+        var m = Match(mode: .practice)
+        _ = m.update(dt: 3)
+        var evs: [MatchEvent] = []
+        for _ in 0..<6 { evs += m.basket(player: 0, swish: false) }
+        XCTAssert(evs.contains(.unstoppable(player: 0)))
+        XCTAssertEqual(m.basket(player: 0, swish: false).first, .basket(player: 0, points: 4, swish: false, onFire: true, double: false))
+    }
+
+    /// Paid content is things to play with, never a clock.
+    func testOnlyWildTossNeedsPro() {
+        XCTAssertEqual(Mode.allCases.filter(\.isPro), [.wildToss])
+    }
 }

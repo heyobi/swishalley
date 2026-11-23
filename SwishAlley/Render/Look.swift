@@ -263,6 +263,42 @@ enum Textures {
         }
     }
 
+    /// Watermelon rind: green with darker wavy stripes (equirectangular).
+    static func melon() -> UIImage {
+        cached("melon") {
+            render(CGSize(width: 512, height: 256)) { c in
+                c.setFillColor(UIColor(hex: 0x6fbf4a).cgColor)
+                c.fill(CGRect(x: 0, y: 0, width: 512, height: 256))
+                c.setStrokeColor(UIColor(hex: 0x1f5e25).cgColor)
+                c.setLineWidth(22)
+                for k in 0..<10 {
+                    let x0 = CGFloat(k) * 51.2
+                    c.move(to: CGPoint(x: x0, y: 0))
+                    for y in stride(from: 0, through: 256, by: 8) {
+                        c.addLine(to: CGPoint(x: x0 + 9 * sin(CGFloat(y) / 18 + CGFloat(k)), y: CGFloat(y)))
+                    }
+                    c.strokePath()
+                }
+            }
+        }
+    }
+
+    /// Pumpkin skin: orange with darker ribs.
+    static func pumpkin() -> UIImage {
+        cached("pumpkin") {
+            render(CGSize(width: 512, height: 256)) { c in
+                c.setFillColor(UIColor(hex: 0xf07a14).cgColor)
+                c.fill(CGRect(x: 0, y: 0, width: 512, height: 256))
+                for k in 0..<10 {
+                    let x = CGFloat(k) * 51.2
+                    let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: [UIColor(hex: 0xa84a06, alpha: 0.85).cgColor, UIColor(hex: 0xf07a14, alpha: 0).cgColor] as CFArray, locations: [0, 1])!
+                    c.drawLinearGradient(g, start: CGPoint(x: x, y: 0), end: CGPoint(x: x + 22, y: 0), options: [])
+                    c.drawLinearGradient(g, start: CGPoint(x: x, y: 0), end: CGPoint(x: x - 22, y: 0), options: [])
+                }
+            }
+        }
+    }
+
     /// Soft round shadow.
     static func blob() -> UIImage {
         cached("blob") {
