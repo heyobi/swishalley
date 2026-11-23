@@ -98,6 +98,11 @@ struct Lane {
         Projectile.wild[Int(rng.next() % UInt64(Projectile.wild.count))]
     }
 
+    /// Makes the ball on the spot a given object (screenshots).
+    mutating func forceKind(_ k: Projectile) {
+        if let i = order.first { balls[i].kind = k }
+    }
+
     /// The next ball to come up after the one on the spot turns golden.
     mutating func markGolden() {
         let pick = order.count > 1 ? order[1] : order.first

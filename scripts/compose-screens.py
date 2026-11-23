@@ -32,11 +32,13 @@ TEXT = {
     '3-duel': ('Face-to-face duel', 'Two players, one phone, free forever', 'Two players, one phone, free forever'),
     '4-results': ('Beat your best', 'One more run? Always one more run', 'One more run? Always one more run'),
     '5-locker': ('Neon arenas and balls', 'A warm retro arcade, original look and music', 'A warm retro arcade, original look and music'),
+    '6-wild': ('Wild Toss', 'Throw watermelons, ducks and toasters', ''),
+    '7-wild': ('Wild Toss', 'Throw watermelons, ducks and toasters', 'Throw watermelons, ducks and toasters'),
     '6-paywall': ('Free, no ads', 'Pro is a one-time thank-you, no subscription', 'Pro is a one-time thank-you, no subscription'),
 }
-ORDER_DUO_INNER = ['1-stage', '2-fire', '3-final', '4-duel', '5-menu']
-ORDER_OTHER = ['1-play', '2-fire', '3-duel', '4-results', '5-locker']
-ORDER_DUO_OUTER = ['1-play', '3-duel', '4-results']
+ORDER_DUO_INNER = ['1-stage', '2-fire', '6-wild', '3-final', '4-duel', '5-menu']
+ORDER_OTHER = ['1-play', '2-fire', '7-wild', '3-duel', '4-results', '5-locker']
+ORDER_DUO_OUTER = ['1-play', '7-wild', '3-duel', '4-results']
 
 
 def font(path, size):

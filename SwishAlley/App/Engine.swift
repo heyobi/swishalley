@@ -587,6 +587,12 @@ final class Engine: ObservableObject {
     /// Screenshot tour helpers.
     func setResults(_ r: Results) { results = r; screen = .results }
     func injectMatch(_ m: Match) { match = m }
+    func forceKind(_ k: Projectile, lane: Int = 0) { if lane < lanes.count { lanes[lane].forceKind(k) } }
+    /// A lob that lands short (screenshots: a splat).
+    func lob(lane k: Int) {
+        guard k < lanes.count else { return }
+        for e in lanes[k].launch(velocity: SIMD3(0.08, 2.0, -0.35), power: 0.6) { handle(e, arena: k) }
+    }
     func showBanner(_ text: String, detail: String?, player: Int, hot: Bool) { show(text, detail: detail, player: player, hot: hot) }
     /// Runs physics and rules for a while without waiting for frames (screenshot set-up).
     func advance(seconds: Double) {

@@ -39,12 +39,14 @@ struct ShotsTour {
                             shots: [(0, 0.36)], banner: (String(localized: "Double points!"), String(localized: "The hoop is on the move")))
             await duelShot("4-duel@180", theme: "gym")
             await menuShot("5-menu@108", hinge: 108)
+            await wildShot("6-wild@116", hinge: 116, eye: SIMD3(-0.02, 0.21, 0.36))
         } else {
             await windowShot("1-play", theme: "gym", points: [26], streak: [1], time: 41, flight: 0.4, banner: nil)
             await windowShot("2-fire", theme: "rooftop", points: [44], streak: [4], time: 19, flight: 0.5,
                              banner: (String(localized: "On fire!"), String(localized: "Baskets worth 3")))
             await duelShot("3-duel", theme: "pier")
             await resultsShot("4-results")
+            await wildShot("7-wild", hinge: nil, eye: nil)
             engine.pauseToMenu()
             engine.shotSheet = .locker
             await step("5-locker")
@@ -148,6 +150,32 @@ struct ShotsTour {
         engine.frozen = true
         writeGeometry(name: String(name.split(separator: "@")[0]), eye: SIMD3(0, Layout.duelEyeHeight, 0.3), hinge: 180)
         await step(name)
+    }
+
+    /// Wild Toss: a watermelon that just splatted on the floor and a rubber duck on its way to the hoop.
+    private func wildShot(_ name: String, hinge: Double?, eye: SIMD3<Float>?) async {
+        engine.frozen = false
+        engine.banners = []
+        engine.hingeOverride = hinge
+        engine.simulateEye = eye
+        engine.themeID = "cabinet"
+        engine.start(.wildToss)
+        try? await Task.sleep(for: .seconds(0.6))
+        var m = engine.match ?? Match(mode: .wildToss)
+        m.showcase(points: [31], baskets: [13], streak: [2], timeLeft: 34)
+        engine.injectMatch(m)
+        try? await Task.sleep(for: .seconds(1))
+        engine.forceKind(.melon)
+        engine.lob(lane: 0)
+        engine.advance(seconds: 1.2)
+        engine.advance(seconds: 0.3)
+        engine.forceKind(.duck)
+        engine.demoShot(lane: 0, factor: 1)
+        engine.advance(seconds: 0.42)
+        engine.frozen = true
+        if let eye, let hinge { writeGeometry(name: String(name.split(separator: "@")[0]), eye: eye, hinge: hinge) }
+        await step(name, settle: hinge == nil)
+        engine.frozen = false
     }
 
     private func menuShot(_ name: String, hinge: Double) async {
