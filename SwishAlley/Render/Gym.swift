@@ -277,7 +277,7 @@ final class ArenaNodes {
             signMat.emission.intensity = 1.6
             signMat.blendMode = .add
             signMat.writesToDepthBuffer = false
-            _ = add(SCNPlane(width: 1.6, height: 0.4), signMat, at: SIMD3(0, 1.05, wallZ + 0.01))
+            _ = add(SCNPlane(width: 1.3, height: 0.325), signMat, at: SIMD3(0, 0.84, wallZ + 0.01))
             for side: Float in [-1, 1] {
                 // Side walls of the room, so wide windows never see the void.
                 _ = add(SCNPlane(width: 3, height: 4), wallMat, at: SIMD3(side * 2.2, 2, 0.4), euler: SIMD3(0, -side * .pi / 2, 0))

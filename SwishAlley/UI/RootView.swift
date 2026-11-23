@@ -36,9 +36,9 @@ struct RootView: View {
 
     var body: some View {
         stage
-            .sheet(item: $sheet) { s in sheetView(s) }
+            .sheet(item: $sheet, onDismiss: { engine.shotSheet = nil }) { s in sheetView(s) }
             .onChange(of: engine.askReview) { _, ask in if ask { requestReview(); engine.askReview = false } }
-            .onChange(of: engine.shotSheet) { _, s in sheet = s; if s != nil { engine.shotSheet = nil } }
+            .onChange(of: engine.shotSheet) { _, s in if let s { sheet = s } else if ShotsTour.active { sheet = nil } }
             .task {
                 if ShotsTour.active { return }
                 try? await Task.sleep(nanoseconds: 3_000_000_000)

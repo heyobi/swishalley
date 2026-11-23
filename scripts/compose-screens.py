@@ -222,6 +222,9 @@ def dashed_fold(canvas, a, b, k, label):
     tw = od.textlength(label, font=f)
     lx = min(W - tw - 70, b[0] - tw * 0.15)
     ly = b[1] + 30
+    if ly + f.size + 40 > H:
+        # No room below the end of the line: put the label beside it.
+        lx, ly = b[0] + 40, b[1] - f.size - 80
     od.rounded_rectangle((lx - 22, ly - 8, lx + tw + 22, ly + f.size + 20), radius=(f.size + 28) / 2, fill=(255, 255, 255, 240))
     od.text((lx, ly), label, font=f, fill=(40, 18, 60, 255))
     canvas.alpha_composite(over)
